@@ -121,6 +121,26 @@ func (sp *ShipProcessor) Jump(symbol string) (*game.Ship, error) {
 	return sp.Game.Ships[sp.Symbol], nil
 }
 
+func (sp *ShipProcessor) Market() (*sdk.Market, error) {
+	if sp.gameShip().Waypoint == nil {
+		return nil, api.NewInvalidWaypointError("")
+	}
+
+	wp := game.NewWaypoint(*sp.gameShip().Waypoint)
+
+	if wp.HasMarket() {
+		mkt, err := sp.Game.Markets.MarketForSymbol(wp.Symbol)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return &mkt, nil
+	} else {
+		return nil, api.NewInvalidWaypointError(wp.Symbol)
+	}
+}
+
 func (sp *ShipProcessor) Navigate(symbol string) (*game.Ship, error) {
 	resp, err := sp.apiShip.Navigate(sp.Game.AuthContext(), symbol)
 
@@ -224,20 +244,20 @@ func (sp *ShipProcessor) SellCargo(symbol string, units int32) (*sdk.MarketTrans
 	return &resp.Transaction, nil
 }
 
-func (sp *ShipProcessor) Shipyard() ([]sdk.ShipyardShip, error) {
+func (sp *ShipProcessor) Shipyard() (*sdk.Shipyard, error) {
 	wp, err := sp.apiWaypoint()
 
 	if err != nil {
-		return []sdk.ShipyardShip{}, err
+		return nil, err
 	}
 
 	resp, err := wp.Shipyard(sp.Game.AuthContext())
 
 	if err != nil {
-		return []sdk.ShipyardShip{}, err
+		return nil, err
 	}
 
-	return resp.Ships, nil
+	return &resp, nil
 }
 
 func (sp *ShipProcessor) Survey() ([]sdk.Survey, error) {

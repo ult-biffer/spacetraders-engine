@@ -2,7 +2,6 @@ package game
 
 import (
 	"context"
-	"fmt"
 	"spacetraders_engine/api"
 
 	sdk "github.com/ult-biffer/spacetraders-api-go"
@@ -57,5 +56,5 @@ func (wpc *WaypointCache) Waypoint(symbol string) (sdk.Waypoint, error) {
 		}
 	}
 
-	return sdk.Waypoint{}, fmt.Errorf("invalid waypoint %s", symbol)
+	return sdk.Waypoint{}, api.NewInvalidWaypointError(symbol)
 }
