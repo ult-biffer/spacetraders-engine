@@ -3,6 +3,7 @@ package game
 import (
 	"context"
 	"spacetraders_engine/api"
+	"time"
 
 	sdk "github.com/ult-biffer/spacetraders-api-go"
 )
@@ -10,22 +11,27 @@ import (
 type MarketCache struct {
 	client    *sdk.APIClient
 	context   context.Context
-	markets   map[string]sdk.Market
+	markets   map[string]marketCacheEntry
 	waypoints *WaypointCache
+}
+
+type marketCacheEntry struct {
+	Market  sdk.Market
+	SavedAt time.Time
 }
 
 func NewMarketCache(client *sdk.APIClient, ctx context.Context, wp *WaypointCache) *MarketCache {
 	return &MarketCache{
 		client:    client,
 		context:   ctx,
-		markets:   make(map[string]sdk.Market),
+		markets:   make(map[string]marketCacheEntry),
 		waypoints: wp,
 	}
 }
 
 func (mc *MarketCache) MarketForSymbol(symbol string) (sdk.Market, error) {
-	if mkt, ok := mc.markets[symbol]; ok {
-		return mkt, nil
+	if mkt, ok := mc.markets[symbol]; ok && !mkt.IsOld(nil) {
+		return mkt.Market, nil
 	}
 
 	wp, err := mc.waypoints.Waypoint(symbol)
@@ -40,7 +46,18 @@ func (mc *MarketCache) MarketForSymbol(symbol string) (sdk.Market, error) {
 		return sdk.Market{}, err
 	}
 
-	return a.Market(mc.context)
+	mkt, err := a.Market(mc.context)
+
+	if err != nil {
+		return sdk.Market{}, err
+	}
+
+	mc.markets[symbol] = marketCacheEntry{
+		Market:  mkt,
+		SavedAt: time.Now(),
+	}
+
+	return mkt, nil
 }
 
 func (mc *MarketCache) MarketsInSystem(system string) ([]sdk.Market, error) {
@@ -70,4 +87,13 @@ func (mc *MarketCache) MarketsInSystem(system string) ([]sdk.Market, error) {
 	}
 
 	return result, nil
+}
+
+func (entry marketCacheEntry) IsOld(oldestAcceptable *time.Time) bool {
+	if oldestAcceptable == nil {
+		t := time.Now().Add(time.Duration(-1) * time.Hour)
+		oldestAcceptable = &t
+	}
+
+	return entry.SavedAt.Before(*oldestAcceptable)
 }
