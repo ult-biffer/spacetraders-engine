@@ -10,12 +10,27 @@ import (
 )
 
 const MAX_LIMIT int32 = 20
+const INVALID_WAYPOINT = "invalid waypoint %s"
+
+type InvalidWaypointError struct {
+	symbol string
+}
+
+func (err *InvalidWaypointError) Error() string {
+	return fmt.Sprintf(INVALID_WAYPOINT, err.symbol)
+}
+
+func NewInvalidWaypointError(symbol string) error {
+	return &InvalidWaypointError{
+		symbol: symbol,
+	}
+}
 
 func GetSystemFromWaypoint(waypoint string) (string, error) {
 	parts := strings.Split(waypoint, "-")
 
 	if len(parts) < 3 {
-		return "", fmt.Errorf("invalid waypoint %s", waypoint)
+		return "", NewInvalidWaypointError(waypoint)
 	}
 
 	return strings.Join(parts[0:2], "-"), nil

@@ -1,7 +1,6 @@
 package processors
 
 import (
-	"fmt"
 	"spacetraders_engine/api"
 	"spacetraders_engine/game"
 
@@ -71,7 +70,7 @@ func (sp *ShipProcessor) Dock() (*game.Ship, error) {
 
 func (sp *ShipProcessor) Extract(survey string) (*sdk.Extraction, error) {
 	if sp.gameShip().OnCooldown() {
-		return nil, fmt.Errorf("ship is on cooldown")
+		return nil, NewShipOnCooldownError()
 	}
 
 	s := sp.Game.Surveys[survey]
@@ -99,7 +98,7 @@ func (sp *ShipProcessor) Jettison(symbol string, units int32) (*game.Ship, error
 
 func (sp *ShipProcessor) Jump(symbol string) (*game.Ship, error) {
 	if sp.gameShip().OnCooldown() {
-		return nil, fmt.Errorf("ship is on cooldown")
+		return nil, NewShipOnCooldownError()
 	}
 
 	resp, err := sp.apiShip.Jump(sp.Game.AuthContext(), symbol)
@@ -182,7 +181,7 @@ func (sp *ShipProcessor) Refine(produce string) (p, c []sdk.ShipRefine200Respons
 	empty := make([]sdk.ShipRefine200ResponseDataProducedInner, 0)
 
 	if sp.gameShip().OnCooldown() {
-		return empty, empty, fmt.Errorf("ship is on cooldown")
+		return empty, empty, NewShipOnCooldownError()
 	}
 
 	resp, err := sp.apiShip.Refine(sp.Game.AuthContext(), produce)
@@ -243,7 +242,7 @@ func (sp *ShipProcessor) Shipyard() ([]sdk.ShipyardShip, error) {
 
 func (sp *ShipProcessor) Survey() ([]sdk.Survey, error) {
 	if sp.gameShip().OnCooldown() {
-		return nil, fmt.Errorf("ship is on cooldown")
+		return nil, NewShipOnCooldownError()
 	}
 
 	resp, err := sp.apiShip.Survey(sp.Game.AuthContext())
@@ -277,7 +276,7 @@ func (sp *ShipProcessor) apiWaypoint() (*api.Waypoint, error) {
 	ship, ok := sp.Game.Ships[sp.Symbol]
 
 	if !ok {
-		return nil, fmt.Errorf("could not find ship %s", sp.Symbol)
+		return nil, NewShipNotFoundError(sp.Symbol)
 	}
 
 	wp, err := api.NewWaypoint(sp.Game.Client, ship.Nav.WaypointSymbol)
