@@ -1,4 +1,4 @@
-package game
+package ext
 
 import (
 	"time"
@@ -7,12 +7,19 @@ import (
 )
 
 type Cooldown struct {
-	Object  *sdk.Cooldown `json:"cooldown"`
-	SavedAt time.Time     `json:"savedAt"`
+	sdk.Cooldown
+	SavedAt time.Time `json:"savedAt"`
+}
+
+func NewCooldown(cd sdk.Cooldown) *Cooldown {
+	return &Cooldown{
+		Cooldown: cd,
+		SavedAt:  time.Now(),
+	}
 }
 
 func (cd Cooldown) Expiration() (bool, int64) {
-	seconds := time.Second * time.Duration(cd.Object.RemainingSeconds)
+	seconds := time.Second * time.Duration(cd.RemainingSeconds)
 	expiresAt := cd.SavedAt.Add(seconds)
 	secondsTilExpiration := time.Until(expiresAt) / time.Second
 

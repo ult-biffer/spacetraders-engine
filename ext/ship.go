@@ -1,4 +1,4 @@
-package game
+package ext
 
 import (
 	sdk "github.com/ult-biffer/spacetraders-api-go"
@@ -6,11 +6,11 @@ import (
 
 type Ship struct {
 	sdk.Ship
-	Cooldown *Cooldown     `json:"cooldown"`
-	Waypoint *sdk.Waypoint `json:"waypoint"`
+	Cooldown *Cooldown `json:"cooldown"`
+	Waypoint *Waypoint `json:"waypoint"`
 }
 
-func NewShip(ship sdk.Ship, cd *Cooldown, wp *sdk.Waypoint) *Ship {
+func NewShip(ship sdk.Ship, cd *Cooldown, wp *Waypoint) *Ship {
 	return &Ship{
 		Ship:     ship,
 		Cooldown: cd,

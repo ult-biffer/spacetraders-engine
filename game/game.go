@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"spacetraders_engine/ext"
 	"time"
 
 	sdk "github.com/ult-biffer/spacetraders-api-go"
@@ -16,7 +17,7 @@ type Game struct {
 	Agent     *sdk.Agent               `json:"agent"`
 	Contracts map[string]*sdk.Contract `json:"contracts"`
 	Markets   *MarketCache             `json:"-"`
-	Ships     map[string]*Ship         `json:"ships"`
+	Ships     map[string]*ext.Ship     `json:"ships"`
 	Surveys   map[string]*sdk.Survey   `json:"survey"`
 	Token     string                   `json:"token"`
 	Waypoints *WaypointCache           `json:"-"`
@@ -48,11 +49,11 @@ func (g *Game) Save() error {
 func (g *Game) LoadFrom201(data sdk.Register201ResponseData) {
 	g.Agent = &data.Agent
 	g.Contracts = make(map[string]*sdk.Contract)
-	g.Ships = make(map[string]*Ship)
+	g.Ships = make(map[string]*ext.Ship)
 	g.Surveys = make(map[string]*sdk.Survey)
 
 	g.Contracts[data.Contract.Id] = &data.Contract
-	g.Ships[data.Ship.Symbol] = NewShip(data.Ship, nil, nil)
+	g.Ships[data.Ship.Symbol] = ext.NewShip(data.Ship, nil, nil)
 	g.Token = data.Token
 
 	g.initCaches()
@@ -84,10 +85,7 @@ func (g *Game) AddContracts(contracts []sdk.Contract) {
 }
 
 func (g *Game) AddCooldown(cd sdk.Cooldown) {
-	g.Ships[cd.ShipSymbol].Cooldown = &Cooldown{
-		Object:  &cd,
-		SavedAt: time.Now(),
-	}
+	g.Ships[cd.ShipSymbol].Cooldown = ext.NewCooldown(cd)
 }
 
 func (g *Game) AddSurveys(surveys []sdk.Survey) {
@@ -110,16 +108,17 @@ func (g *Game) ReplaceContracts(contracts []sdk.Contract) {
 }
 
 func (g *Game) ReplaceShips(ships []sdk.Ship) {
-	result := make(map[string]*Ship)
+	result := make(map[string]*ext.Ship)
 	for i := range ships {
 		if v, ok := g.Ships[ships[i].Symbol]; ok {
-			result[ships[i].Symbol] = NewShip(ships[i], v.Cooldown, v.Waypoint)
+			result[ships[i].Symbol] = ext.NewShip(ships[i], v.Cooldown, v.Waypoint)
 		} else {
-			result[ships[i].Symbol] = NewShip(ships[i], nil, nil)
+			result[ships[i].Symbol] = ext.NewShip(ships[i], nil, nil)
 		}
 	}
 
 	g.Ships = result
+	g.initShips()
 }
 
 func (g *Game) ShipSymbol(input string) string {
@@ -143,15 +142,13 @@ func (g *Game) initCaches() {
 
 func (g *Game) initShips() {
 	for k, v := range g.Ships {
-		var pwp *sdk.Waypoint
 		wp, err := g.Waypoints.Waypoint(v.Nav.WaypointSymbol)
 
 		if err != nil {
-			pwp = nil
+			continue
 		}
 
-		pwp = &wp
-		g.Ships[k].Waypoint = pwp
+		g.Ships[k].Waypoint = ext.NewWaypoint(wp)
 	}
 }
 

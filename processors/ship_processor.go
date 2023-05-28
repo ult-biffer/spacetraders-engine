@@ -2,6 +2,7 @@ package processors
 
 import (
 	"spacetraders_engine/api"
+	"spacetraders_engine/ext"
 	"spacetraders_engine/game"
 
 	sdk "github.com/ult-biffer/spacetraders-api-go"
@@ -25,7 +26,7 @@ func NewShipProcessor(g *game.Game, symbol string) (*ShipProcessor, error) {
 	}, nil
 }
 
-func (sp *ShipProcessor) Get() (*game.Ship, error) {
+func (sp *ShipProcessor) Get() (*ext.Ship, error) {
 	resp, err := sp.apiShip.Get(sp.Game.AuthContext())
 
 	if err != nil {
@@ -57,7 +58,7 @@ func (sp *ShipProcessor) Cooldown() (*sdk.Cooldown, error) {
 	return &resp, nil
 }
 
-func (sp *ShipProcessor) Dock() (*game.Ship, error) {
+func (sp *ShipProcessor) Dock() (*ext.Ship, error) {
 	resp, err := sp.apiShip.Dock(sp.Game.AuthContext())
 
 	if err != nil {
@@ -85,7 +86,7 @@ func (sp *ShipProcessor) Extract(survey string) (*sdk.Extraction, error) {
 	return &resp.Extraction, nil
 }
 
-func (sp *ShipProcessor) Jettison(symbol string, units int32) (*game.Ship, error) {
+func (sp *ShipProcessor) Jettison(symbol string, units int32) (*ext.Ship, error) {
 	resp, err := sp.apiShip.Jettison(sp.Game.AuthContext(), symbol, units)
 
 	if err != nil {
@@ -96,7 +97,7 @@ func (sp *ShipProcessor) Jettison(symbol string, units int32) (*game.Ship, error
 	return sp.Game.Ships[sp.Symbol], nil
 }
 
-func (sp *ShipProcessor) Jump(symbol string) (*game.Ship, error) {
+func (sp *ShipProcessor) Jump(symbol string) (*ext.Ship, error) {
 	if sp.gameShip().OnCooldown() {
 		return nil, NewShipOnCooldownError()
 	}
@@ -126,10 +127,8 @@ func (sp *ShipProcessor) Market() (*sdk.Market, error) {
 		return nil, api.NewInvalidWaypointError("")
 	}
 
-	wp := game.NewWaypoint(*sp.gameShip().Waypoint)
-
-	if wp.HasMarket() {
-		mkt, err := sp.Game.Markets.MarketForSymbol(wp.Symbol)
+	if sp.gameShip().Waypoint.HasMarket() {
+		mkt, err := sp.Game.Markets.MarketForSymbol(sp.gameShip().Waypoint.Symbol)
 
 		if err != nil {
 			return nil, err
@@ -137,11 +136,11 @@ func (sp *ShipProcessor) Market() (*sdk.Market, error) {
 
 		return &mkt, nil
 	} else {
-		return nil, api.NewInvalidWaypointError(wp.Symbol)
+		return nil, api.NewInvalidWaypointError(sp.gameShip().Waypoint.Symbol)
 	}
 }
 
-func (sp *ShipProcessor) Navigate(symbol string) (*game.Ship, error) {
+func (sp *ShipProcessor) Navigate(symbol string) (*ext.Ship, error) {
 	resp, err := sp.apiShip.Navigate(sp.Game.AuthContext(), symbol)
 
 	if err != nil {
@@ -154,7 +153,7 @@ func (sp *ShipProcessor) Navigate(symbol string) (*game.Ship, error) {
 	return sp.updateWaypoint(resp.Nav.WaypointSymbol)
 }
 
-func (sp *ShipProcessor) Orbit() (*game.Ship, error) {
+func (sp *ShipProcessor) Orbit() (*ext.Ship, error) {
 	resp, err := sp.apiShip.Orbit(sp.Game.AuthContext())
 
 	if err != nil {
@@ -192,7 +191,7 @@ func (sp *ShipProcessor) PurchaseShip(t sdk.ShipType) (*sdk.ShipyardTransaction,
 	}
 
 	sp.Game.Agent = &resp.Agent
-	sp.Game.Ships[resp.Ship.Symbol] = game.NewShip(resp.Ship, nil, nil)
+	sp.Game.Ships[resp.Ship.Symbol] = ext.NewShip(resp.Ship, nil, nil)
 
 	newWp, err := sp.Game.Waypoints.Waypoint(resp.Ship.Nav.WaypointSymbol)
 
@@ -200,7 +199,7 @@ func (sp *ShipProcessor) PurchaseShip(t sdk.ShipType) (*sdk.ShipyardTransaction,
 		return nil, err
 	}
 
-	sp.Game.Ships[resp.Ship.Symbol].Waypoint = &newWp
+	sp.Game.Ships[resp.Ship.Symbol].Waypoint = ext.NewWaypoint(newWp)
 	return &resp.Transaction, nil
 }
 
@@ -286,7 +285,7 @@ func (sp *ShipProcessor) Survey() ([]sdk.Survey, error) {
 
 // TODO: Transfer Cargo
 
-func (sp *ShipProcessor) Warp(symbol string) (*game.Ship, error) {
+func (sp *ShipProcessor) Warp(symbol string) (*ext.Ship, error) {
 	resp, err := sp.apiShip.Warp(sp.Game.AuthContext(), symbol)
 
 	if err != nil {
@@ -315,17 +314,17 @@ func (sp *ShipProcessor) apiWaypoint() (*api.Waypoint, error) {
 	return wp, nil
 }
 
-func (sp *ShipProcessor) gameShip() *game.Ship {
+func (sp *ShipProcessor) gameShip() *ext.Ship {
 	return sp.Game.Ships[sp.Symbol]
 }
 
-func (sp *ShipProcessor) updateWaypoint(symbol string) (*game.Ship, error) {
+func (sp *ShipProcessor) updateWaypoint(symbol string) (*ext.Ship, error) {
 	wp, err := sp.Game.Waypoints.Waypoint(symbol)
 
 	if err != nil {
 		return nil, err
 	}
 
-	sp.Game.Ships[sp.Symbol].Waypoint = &wp
+	sp.Game.Ships[sp.Symbol].Waypoint = ext.NewWaypoint(wp)
 	return sp.Game.Ships[sp.Symbol], nil
 }
