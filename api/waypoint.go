@@ -13,7 +13,7 @@ type Waypoint struct {
 }
 
 func NewWaypoint(client *sdk.APIClient, symbol string) (*Waypoint, error) {
-	system, err := GetSystemFromWaypoint(symbol)
+	system, err := getSystemFromWaypoint(symbol)
 
 	if err != nil {
 		return nil, err

@@ -3,6 +3,7 @@ package game
 import (
 	"context"
 	"spacetraders_engine/api"
+	"spacetraders_engine/ext"
 
 	sdk "github.com/ult-biffer/spacetraders-api-go"
 )
@@ -38,12 +39,13 @@ func (wpc *WaypointCache) WaypointsInSystem(system string) ([]sdk.Waypoint, erro
 }
 
 func (wpc *WaypointCache) Waypoint(symbol string) (sdk.Waypoint, error) {
-	system, err := api.GetSystemFromWaypoint(symbol)
+	loc := ext.NewLocation(symbol)
 
-	if err != nil {
-		return sdk.Waypoint{}, err
+	if !loc.HasSystem() {
+		return sdk.Waypoint{}, api.NewInvalidWaypointError(symbol)
 	}
 
+	system := loc.System
 	waypoints, err := wpc.WaypointsInSystem(system)
 
 	if err != nil {

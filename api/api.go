@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"strings"
+	"spacetraders_engine/ext"
 
 	sdk "github.com/ult-biffer/spacetraders-api-go"
 )
@@ -26,14 +26,14 @@ func NewInvalidWaypointError(symbol string) error {
 	}
 }
 
-func GetSystemFromWaypoint(waypoint string) (string, error) {
-	parts := strings.Split(waypoint, "-")
+func getSystemFromWaypoint(waypoint string) (string, error) {
+	loc := ext.NewLocation(waypoint)
 
-	if len(parts) < 3 {
+	if !loc.HasSystem() {
 		return "", NewInvalidWaypointError(waypoint)
 	}
 
-	return strings.Join(parts[0:2], "-"), nil
+	return loc.System, nil
 }
 
 func handleHttpError(res *http.Response) {
