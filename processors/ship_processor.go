@@ -194,6 +194,13 @@ func (sp *ShipProcessor) PurchaseShip(t sdk.ShipType) (*sdk.ShipyardTransaction,
 	sp.Game.Agent = &resp.Agent
 	sp.Game.Ships[resp.Ship.Symbol] = game.NewShip(resp.Ship, nil, nil)
 
+	newWp, err := sp.Game.Waypoints.Waypoint(resp.Ship.Nav.WaypointSymbol)
+
+	if err != nil {
+		return nil, err
+	}
+
+	sp.Game.Ships[resp.Ship.Symbol].Waypoint = &newWp
 	return &resp.Transaction, nil
 }
 

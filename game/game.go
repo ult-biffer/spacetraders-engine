@@ -56,6 +56,7 @@ func (g *Game) LoadFrom201(data sdk.Register201ResponseData) {
 	g.Token = data.Token
 
 	g.initCaches()
+	g.initShips()
 }
 
 func (g *Game) LoadFromSymbol(symbol string) error {
@@ -138,6 +139,20 @@ func (g *Game) loadFromOther(ng *Game) {
 func (g *Game) initCaches() {
 	g.Waypoints = NewWaypointCache(g.Client, g.AuthContext())
 	g.Markets = NewMarketCache(g.Client, g.AuthContext(), g.Waypoints)
+}
+
+func (g *Game) initShips() {
+	for k, v := range g.Ships {
+		var pwp *sdk.Waypoint
+		wp, err := g.Waypoints.Waypoint(v.Nav.WaypointSymbol)
+
+		if err != nil {
+			pwp = nil
+		}
+
+		pwp = &wp
+		g.Ships[k].Waypoint = pwp
+	}
 }
 
 func (g *Game) writeToPath(path string) error {
