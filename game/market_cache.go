@@ -3,6 +3,7 @@ package game
 import (
 	"context"
 	"spacetraders_engine/api"
+	"spacetraders_engine/ext"
 	"time"
 
 	sdk "github.com/ult-biffer/spacetraders-api-go"
@@ -70,7 +71,7 @@ func (mc *MarketCache) MarketsInSystem(system string) ([]sdk.Market, error) {
 	}
 
 	for _, v := range wp {
-		g := NewWaypoint(v)
+		g := ext.NewWaypoint(v)
 		if g.HasMarket() {
 			waypoints = append(waypoints, v)
 		}
