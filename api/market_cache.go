@@ -70,8 +70,7 @@ func (mc *MarketCache) MarketsInSystem(system string) ([]sdk.Market, error) {
 	}
 
 	for _, v := range wp {
-		g := ext.NewWaypoint(v)
-		if g.HasMarket() {
+		if v.HasMarket() {
 			waypoints = append(waypoints, v)
 		}
 	}
