@@ -1,8 +1,7 @@
-package game
+package api
 
 import (
 	"context"
-	"spacetraders_engine/api"
 	"spacetraders_engine/ext"
 	"time"
 
@@ -41,7 +40,7 @@ func (mc *MarketCache) MarketForSymbol(symbol string) (sdk.Market, error) {
 		return sdk.Market{}, err
 	}
 
-	a, err := api.NewWaypoint(mc.client, wp.Symbol)
+	a, err := NewWaypoint(mc.client, wp.Symbol)
 
 	if err != nil {
 		return sdk.Market{}, err
@@ -62,7 +61,7 @@ func (mc *MarketCache) MarketForSymbol(symbol string) (sdk.Market, error) {
 }
 
 func (mc *MarketCache) MarketsInSystem(system string) ([]sdk.Market, error) {
-	waypoints := make([]sdk.Waypoint, 0)
+	waypoints := make([]ext.Waypoint, 0)
 	result := make([]sdk.Market, 0)
 	wp, err := mc.waypoints.WaypointsInSystem(system)
 

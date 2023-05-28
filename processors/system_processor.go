@@ -2,6 +2,7 @@ package processors
 
 import (
 	"spacetraders_engine/api"
+	"spacetraders_engine/ext"
 	"spacetraders_engine/game"
 
 	sdk "github.com/ult-biffer/spacetraders-api-go"
@@ -25,7 +26,7 @@ func NewSystemProcessor(g *game.Game, symbol string) (*SystemProcessor, error) {
 	}, nil
 }
 
-func (sp *SystemProcessor) GetWaypoints() ([]sdk.Waypoint, error) {
+func (sp *SystemProcessor) GetWaypoints() ([]ext.Waypoint, error) {
 	return sp.Game.Waypoints.WaypointsInSystem(sp.Symbol)
 }
 

@@ -17,6 +17,14 @@ func NewWaypoint(wp sdk.Waypoint) *Waypoint {
 	}
 }
 
+func NewWaypointList(wps []sdk.Waypoint) []Waypoint {
+	var result []Waypoint
+	for i := range wps {
+		result = append(result, *NewWaypoint(wps[i]))
+	}
+	return result
+}
+
 func (wp *Waypoint) DistanceTo(other sdk.Waypoint) int32 {
 	// Absolute value doesn't matter because we are squaring
 	dx := float64(other.X - wp.X)

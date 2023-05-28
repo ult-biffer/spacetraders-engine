@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"spacetraders_engine/api"
 	"spacetraders_engine/ext"
 	"time"
 
@@ -16,11 +17,11 @@ type Game struct {
 	Client    *sdk.APIClient           `json:"-"`
 	Agent     *sdk.Agent               `json:"agent"`
 	Contracts map[string]*sdk.Contract `json:"contracts"`
-	Markets   *MarketCache             `json:"-"`
+	Markets   *api.MarketCache         `json:"-"`
 	Ships     map[string]*ext.Ship     `json:"ships"`
 	Surveys   map[string]*sdk.Survey   `json:"survey"`
 	Token     string                   `json:"token"`
-	Waypoints *WaypointCache           `json:"-"`
+	Waypoints *api.WaypointCache       `json:"-"`
 }
 
 func NewGame() *Game {
@@ -136,8 +137,8 @@ func (g *Game) loadFromOther(ng *Game) {
 }
 
 func (g *Game) initCaches() {
-	g.Waypoints = NewWaypointCache(g.Client, g.AuthContext())
-	g.Markets = NewMarketCache(g.Client, g.AuthContext(), g.Waypoints)
+	g.Waypoints = api.NewWaypointCache(g.Client, g.AuthContext())
+	g.Markets = api.NewMarketCache(g.Client, g.AuthContext(), g.Waypoints)
 }
 
 func (g *Game) initShips() {
@@ -148,7 +149,7 @@ func (g *Game) initShips() {
 			continue
 		}
 
-		g.Ships[k].Waypoint = ext.NewWaypoint(wp)
+		g.Ships[k].Waypoint = &wp
 	}
 }
 

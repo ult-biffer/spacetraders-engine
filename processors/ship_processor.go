@@ -199,7 +199,7 @@ func (sp *ShipProcessor) PurchaseShip(t sdk.ShipType) (*sdk.ShipyardTransaction,
 		return nil, err
 	}
 
-	sp.Game.Ships[resp.Ship.Symbol].Waypoint = ext.NewWaypoint(newWp)
+	sp.Game.Ships[resp.Ship.Symbol].Waypoint = &newWp
 	return &resp.Transaction, nil
 }
 
@@ -325,6 +325,6 @@ func (sp *ShipProcessor) updateWaypoint(symbol string) (*ext.Ship, error) {
 		return nil, err
 	}
 
-	sp.Game.Ships[sp.Symbol].Waypoint = ext.NewWaypoint(wp)
+	sp.Game.Ships[sp.Symbol].Waypoint = &wp
 	return sp.Game.Ships[sp.Symbol], nil
 }
