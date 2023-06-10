@@ -73,6 +73,12 @@ func (g *Game) AddCooldown(cooldown models.Cooldown) {
 	g.Ships[cd.ShipSymbol].Cooldown = cd
 }
 
+func (g *Game) AddSurveys(surveys []models.Survey) {
+	for i := range surveys {
+		g.Surveys[surveys[i].Signature] = &surveys[i]
+	}
+}
+
 func (g *Game) ReplaceShips(ships []models.Ship) {
 	g.Ships = make(map[string]*ext.Ship)
 

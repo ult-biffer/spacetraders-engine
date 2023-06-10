@@ -84,6 +84,51 @@ func (sp *ShipProcessor) Orbit() (*ext.Ship, error) {
 	return sp.Game.Ships[sp.Symbol], nil
 }
 
+func (sp *ShipProcessor) Survey() ([]models.Survey, error) {
+	if sp.gameShip().OnCooldown() {
+		return nil, fmt.Errorf("ship on cooldown for %ds", sp.gameShip().Cooldown.Expiration())
+	}
+
+	resp, err := api.CreateSurvey(sp.Symbol)
+
+	if err != nil {
+		return nil, err
+	}
+
+	sp.Game.AddSurveys(resp.Data.Surveys)
+	sp.Game.AddCooldown(resp.Data.Cooldown)
+
+	return resp.Data.Surveys, nil
+}
+
+func (sp *ShipProcessor) TransferCargo(dest string, item models.TradeSymbol, units int) (*ext.Ship, error) {
+	d, ok := sp.Game.Ships[dest]
+
+	if !ok {
+		return nil, fmt.Errorf("unknown destination ship %s", dest)
+	}
+
+	if d.Nav.WaypointSymbol != sp.gameShip().Nav.WaypointSymbol || d.Nav.Status != sp.gameShip().Nav.Status {
+		return nil, fmt.Errorf("ships must be at the same waypoint with the same status")
+	}
+
+	resp, err := api.TransferCargo(sp.Symbol, dest, item, units)
+
+	if err != nil {
+		return nil, err
+	}
+
+	cargo, err := api.GetShipCargo(dest)
+
+	if err != nil {
+		return nil, err
+	}
+
+	sp.Game.Ships[sp.Symbol].Cargo = resp.Data.Cargo
+	sp.Game.Ships[dest].Cargo = *cargo
+	return sp.gameShip(), nil
+}
+
 func (sp *ShipProcessor) gameShip() *ext.Ship {
 	return sp.Game.Ships[sp.Symbol]
 }
