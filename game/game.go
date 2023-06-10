@@ -73,6 +73,16 @@ func (g *Game) AddCooldown(cooldown models.Cooldown) {
 	g.Ships[cd.ShipSymbol].Cooldown = cd
 }
 
+func (g *Game) ReplaceShips(ships []models.Ship) {
+	g.Ships = make(map[string]*ext.Ship)
+
+	for i := range ships {
+		g.Ships[ships[i].Symbol] = ext.NewShip(ships[i], nil, nil)
+	}
+
+	g.initShips()
+}
+
 func (g *Game) saveGame() error {
 	path := saveFilePath(g.Agent.Symbol)
 
