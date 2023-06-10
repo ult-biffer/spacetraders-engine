@@ -6,6 +6,7 @@ import (
 	"github.com/ult-biffer/spacetraders_engine/ext"
 	"github.com/ult-biffer/spacetraders_engine/game"
 	"github.com/ult-biffer/spacetraders_sdk/api"
+	"github.com/ult-biffer/spacetraders_sdk/models"
 )
 
 type ShipProcessor struct {
@@ -33,6 +34,23 @@ func (sp *ShipProcessor) Dock() (*ext.Ship, error) {
 
 	sp.Game.Ships[sp.Symbol].Nav = *resp
 	return sp.Game.Ships[sp.Symbol], nil
+}
+
+func (sp *ShipProcessor) Extract(survey string) (*models.Extraction, error) {
+	if sp.gameShip().OnCooldown() {
+		return nil, fmt.Errorf("ship on cooldown for %ds", sp.gameShip().Cooldown.Expiration())
+	}
+
+	s := sp.Game.Surveys[survey]
+	resp, err := api.Extract(sp.Symbol, s)
+
+	if err != nil {
+		return nil, err
+	}
+
+	sp.Game.AddCooldown(resp.Data.Cooldown)
+	sp.Game.Ships[sp.Symbol].Cargo = resp.Data.Cargo
+	return &resp.Data.Extraction, nil
 }
 
 func (sp *ShipProcessor) Navigate(waypoint string) (*ext.Ship, error) {
@@ -64,4 +82,8 @@ func (sp *ShipProcessor) Orbit() (*ext.Ship, error) {
 
 	sp.Game.Ships[sp.Symbol].Nav = *resp
 	return sp.Game.Ships[sp.Symbol], nil
+}
+
+func (sp *ShipProcessor) gameShip() *ext.Ship {
+	return sp.Game.Ships[sp.Symbol]
 }

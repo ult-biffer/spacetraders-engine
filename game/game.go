@@ -68,6 +68,11 @@ func (g *Game) Save() error {
 	return g.saveMarkets()
 }
 
+func (g *Game) AddCooldown(cooldown models.Cooldown) {
+	cd := ext.NewCooldown(cooldown)
+	g.Ships[cd.ShipSymbol].Cooldown = cd
+}
+
 func (g *Game) saveGame() error {
 	path := saveFilePath(g.Agent.Symbol)
 
