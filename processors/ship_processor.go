@@ -84,6 +84,49 @@ func (sp *ShipProcessor) Orbit() (*ext.Ship, error) {
 	return sp.Game.Ships[sp.Symbol], nil
 }
 
+func (sp *ShipProcessor) Refine(produce models.TradeSymbol) (p, c []models.RefinedTradeGood, err error) {
+	if sp.gameShip().OnCooldown() {
+		return nil, nil, fmt.Errorf("ship on cooldown for %ds", sp.gameShip().Cooldown.Expiration())
+	}
+
+	resp, err := api.ShipRefine(sp.Symbol, produce)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sp.Game.AddCooldown(resp.Data.Cooldown)
+	sp.Game.Ships[sp.Symbol].Cargo = resp.Data.Cargo
+
+	return resp.Data.Produced, resp.Data.Consumed, nil
+}
+
+func (sp *ShipProcessor) Refuel() (*models.MarketTransaction, error) {
+	resp, err := api.RefuelShip(sp.Symbol)
+
+	if err != nil {
+		return nil, err
+	}
+
+	sp.Game.Agent = &resp.Data.Agent
+	sp.gameShip().Fuel = resp.Data.Fuel
+
+	return &resp.Data.Transaction, nil
+}
+
+func (sp *ShipProcessor) SellCargo(item models.TradeSymbol, units int) (*models.MarketTransaction, error) {
+	resp, err := api.SellCargo(sp.Symbol, item, units)
+
+	if err != nil {
+		return nil, err
+	}
+
+	sp.Game.Agent = &resp.Data.Agent
+	sp.Game.Ships[sp.Symbol].Cargo = resp.Data.Cargo
+
+	return &resp.Data.Transaction, nil
+}
+
 func (sp *ShipProcessor) Survey() ([]models.Survey, error) {
 	if sp.gameShip().OnCooldown() {
 		return nil, fmt.Errorf("ship on cooldown for %ds", sp.gameShip().Cooldown.Expiration())
@@ -126,6 +169,26 @@ func (sp *ShipProcessor) TransferCargo(dest string, item models.TradeSymbol, uni
 
 	sp.Game.Ships[sp.Symbol].Cargo = resp.Data.Cargo
 	sp.Game.Ships[dest].Cargo = *cargo
+	return sp.gameShip(), nil
+}
+
+func (sp *ShipProcessor) Warp(waypoint string) (*ext.Ship, error) {
+	wp, err := sp.Game.Waypoints.Waypoint(waypoint)
+
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := api.WarpShip(sp.Symbol, waypoint)
+
+	if err != nil {
+		return nil, err
+	}
+
+	sp.Game.Ships[sp.Symbol].Nav = resp.Data.Nav
+	sp.Game.Ships[sp.Symbol].Fuel = resp.Data.Fuel
+	sp.Game.Ships[sp.Symbol].Waypoint = wp
+
 	return sp.gameShip(), nil
 }
 
