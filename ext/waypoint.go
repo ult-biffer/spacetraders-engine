@@ -1,76 +1,81 @@
 package ext
 
 import (
-	"fmt"
 	"math"
 
-	sdk "github.com/ult-biffer/spacetraders-api-go"
+	"github.com/ult-biffer/spacetraders_sdk/models"
+	"github.com/ult-biffer/spacetraders_sdk/util"
 )
 
 type Waypoint struct {
-	sdk.Waypoint
+	models.Waypoint
 }
 
-func NewWaypoint(wp sdk.Waypoint) *Waypoint {
-	return &Waypoint{
-		Waypoint: wp,
-	}
+func NewWaypoint(wp models.Waypoint) *Waypoint {
+	return &Waypoint{Waypoint: wp}
 }
 
-func NewWaypointList(wps []sdk.Waypoint) []Waypoint {
-	var result []Waypoint
+func NewWaypointList(wps []models.Waypoint) []*Waypoint {
+	var result []*Waypoint
 	for i := range wps {
-		result = append(result, *NewWaypoint(wps[i]))
+		result = append(result, NewWaypoint(wps[i]))
 	}
 	return result
 }
 
-func (wp *Waypoint) DistanceTo(other sdk.Waypoint) int32 {
-	// Absolute value doesn't matter because we are squaring
+func (wp *Waypoint) Location() *util.Location {
+	return util.NewLocation(wp.Symbol)
+}
+
+func (wp *Waypoint) DistanceTo(other Waypoint) int {
+	if wp.Location().System != other.Location().System {
+		return -1
+	}
+
 	dx := float64(other.X - wp.X)
 	dy := float64(other.Y - wp.Y)
 
 	// a**2 + b**2 = c**2
 	dd := math.Sqrt(dx*dx + dy*dy)
-	return int32(math.Ceil(dd))
+	return int(math.Ceil(dd))
 }
 
-func (wp *Waypoint) FuelCostTo(other sdk.Waypoint, ship sdk.Ship) (int32, error) {
-	flightMode := ship.Nav.FlightMode
+func (wp *Waypoint) FuelCostTo(other Waypoint, ship Ship) int {
+	fm := ship.Nav.FlightMode
 
-	switch flightMode {
-	case sdk.SHIPNAVFLIGHTMODE_DRIFT:
-		return 1, nil
-	case sdk.SHIPNAVFLIGHTMODE_STEALTH, sdk.SHIPNAVFLIGHTMODE_CRUISE:
-		return wp.DistanceTo(other), nil
-	case sdk.SHIPNAVFLIGHTMODE_BURN:
-		return (2 * wp.DistanceTo(other)), nil
+	switch fm {
+	case models.DRIFT:
+		return 1
+	case models.STEALTH, models.CRUISE:
+		return wp.DistanceTo(other)
+	case models.BURN:
+		return 2 * wp.DistanceTo(other)
 	default:
-		return -1, fmt.Errorf("invalid flight mode %s", flightMode)
+		return -1
 	}
 }
 
-func (wp *Waypoint) TimeTo(other sdk.Waypoint, ship sdk.Ship) (int32, error) {
-	flightMode := ship.Nav.FlightMode
-	shipSpeed := ship.Engine.Speed
-	distance := float32(wp.DistanceTo(other))
-	hertz := distance / shipSpeed
+func (wp *Waypoint) TimeTo(other Waypoint, ship Ship) int {
+	fm := ship.Nav.FlightMode
+	speed := float64(ship.Engine.Speed)
+	distance := float64(wp.DistanceTo(other))
+	hz := distance / speed
 
-	switch flightMode {
-	case sdk.SHIPNAVFLIGHTMODE_DRIFT:
-		return int32(15 + (100 * hertz)), nil
-	case sdk.SHIPNAVFLIGHTMODE_STEALTH:
-		return int32(15 + (20 * hertz)), nil
-	case sdk.SHIPNAVFLIGHTMODE_CRUISE:
-		return int32(15 + (10 * hertz)), nil
-	case sdk.SHIPNAVFLIGHTMODE_BURN:
-		return int32(15 + (5 * hertz)), nil
+	switch fm {
+	case models.DRIFT:
+		return int(15 + math.Ceil(hz*100))
+	case models.STEALTH:
+		return int(15 + math.Ceil(hz*20))
+	case models.CRUISE:
+		return int(15 + math.Ceil(hz*10))
+	case models.BURN:
+		return int(15 + math.Ceil(hz*5))
 	default:
-		return -1, fmt.Errorf("invalid flight mode %s", flightMode)
+		return -1
 	}
 }
 
-func (wp *Waypoint) HasTrait(trait string) bool {
+func (wp *Waypoint) HasTrait(trait models.WaypointTraitSymbol) bool {
 	for _, v := range wp.Traits {
 		if v.Symbol == trait {
 			return true
@@ -80,22 +85,22 @@ func (wp *Waypoint) HasTrait(trait string) bool {
 	return false
 }
 
-func (wp *Waypoint) IsType(t sdk.WaypointType) bool {
-	return wp.Type == t
+func (wp *Waypoint) IsType(t models.WaypointType) bool {
+	return t == wp.Type
 }
 
 func (wp *Waypoint) HasMarket() bool {
-	return wp.HasTrait("MARKETPLACE")
+	return wp.HasTrait(models.WP_TRAIT_MARKETPLACE)
 }
 
 func (wp *Waypoint) HasShipyard() bool {
-	return wp.HasTrait("SHIPYARD")
+	return wp.HasTrait(models.WP_TRAIT_SHIPYARD)
 }
 
 func (wp *Waypoint) IsAsteroidField() bool {
-	return wp.IsType(sdk.WAYPOINTTYPE_ASTEROID_FIELD)
+	return wp.IsType(models.WP_ASTEROID_FIELD)
 }
 
 func (wp *Waypoint) IsJumpGate() bool {
-	return wp.IsType(sdk.WAYPOINTTYPE_JUMP_GATE)
+	return wp.IsType(models.WP_JUMP_GATE)
 }

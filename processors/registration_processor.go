@@ -1,37 +1,33 @@
 package processors
 
 import (
-	"spacetraders_engine/api"
-	"spacetraders_engine/game"
+	"github.com/ult-biffer/spacetraders_engine/game"
+	"github.com/ult-biffer/spacetraders_sdk/api"
 )
 
 type RegistrationProcessor struct {
 	Game    *game.Game
 	Symbol  string
 	Faction string
+	Email   *string
 }
 
-func NewRegistrationProcessor(game *game.Game, symbol string, faction string) *RegistrationProcessor {
+func NewRegistrationProcessor(g *game.Game, sym, fac string, eml *string) *RegistrationProcessor {
 	return &RegistrationProcessor{
-		Game:    game,
-		Symbol:  symbol,
-		Faction: faction,
+		Game:    g,
+		Symbol:  sym,
+		Faction: fac,
+		Email:   eml,
 	}
 }
 
 func (rp *RegistrationProcessor) Register() error {
-	apiRegistration := api.NewRegistration(rp.Game.Client, rp.Symbol, rp.Faction)
-	resp, err := apiRegistration.Register()
+	resp, err := api.Register(rp.Symbol, rp.Faction, rp.Email)
 
 	if err != nil {
 		return err
 	}
 
-	rp.Game.LoadFrom201(resp)
-
-	if err := rp.Game.Save(); err != nil {
-		return err
-	}
-
-	return nil
+	rp.Game.LoadFromResponse(resp)
+	return rp.Game.Save()
 }

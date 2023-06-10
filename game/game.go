@@ -1,159 +1,104 @@
 package game
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"net/http"
 	"os"
-	"spacetraders_engine/api"
-	"spacetraders_engine/ext"
-	"time"
 
-	sdk "github.com/ult-biffer/spacetraders-api-go"
+	"github.com/ult-biffer/spacetraders_engine/ext"
+	"github.com/ult-biffer/spacetraders_sdk/api"
+	"github.com/ult-biffer/spacetraders_sdk/models"
+	"github.com/ult-biffer/spacetraders_sdk/responses"
 )
 
 type Game struct {
-	Client    *sdk.APIClient           `json:"-"`
-	Agent     *sdk.Agent               `json:"agent"`
-	Contracts map[string]*sdk.Contract `json:"contracts"`
-	Markets   *api.MarketCache         `json:"-"`
-	Ships     map[string]*ext.Ship     `json:"ships"`
-	Surveys   map[string]*sdk.Survey   `json:"survey"`
-	Token     string                   `json:"token"`
-	Waypoints *api.WaypointCache       `json:"-"`
+	Token     string                      `json:"token"`
+	Agent     *models.Agent               `json:"agent"`
+	Contracts map[string]*models.Contract `json:"contracts"`
+	Ships     map[string]*ext.Ship        `json:"ships"`
+	Surveys   map[string]*models.Survey   `json:"surveys"`
+	Markets   *ext.MarketCache            `json:"-"`
+	Waypoints *ext.WaypointCache          `json:"-"`
 }
 
-func NewGame() *Game {
-	cfg := sdk.NewConfiguration()
-	transport := NewThrottledTransport(time.Second, 2, http.DefaultTransport)
-	cfg.HTTPClient = &http.Client{Transport: transport}
-	client := sdk.NewAPIClient(cfg)
-
-	return &Game{Client: client}
-}
-
-func (g *Game) Save() error {
-	path := saveFilePath(g.Agent.Symbol)
-
-	if path == "" {
-		return fmt.Errorf("failed to get user config directory")
+func (g *Game) LoadFromResponse(resp *responses.RegisterResponse) {
+	g.Token = resp.Data.Token
+	g.Agent = &resp.Data.Agent
+	g.Contracts = map[string]*models.Contract{
+		resp.Data.Contract.Id: &resp.Data.Contract,
 	}
-
-	if err := g.writeToPath(path); err != nil {
-		return err
+	g.Ships = map[string]*ext.Ship{
+		resp.Data.Ship.Symbol: ext.NewShip(resp.Data.Ship, nil, nil),
 	}
+	g.Surveys = make(map[string]*models.Survey)
 
-	return nil
-}
+	api.GetClient().SetToken(g.Token)
 
-func (g *Game) LoadFrom201(data sdk.Register201ResponseData) {
-	g.Agent = &data.Agent
-	g.Contracts = make(map[string]*sdk.Contract)
-	g.Ships = make(map[string]*ext.Ship)
-	g.Surveys = make(map[string]*sdk.Survey)
-
-	g.Contracts[data.Contract.Id] = &data.Contract
-	g.Ships[data.Ship.Symbol] = ext.NewShip(data.Ship, nil, nil)
-	g.Token = data.Token
-
-	g.initCaches()
+	g.loadCaches()
 	g.initShips()
 }
 
 func (g *Game) LoadFromSymbol(symbol string) error {
-	path := saveFilePath(symbol)
-	body, err := os.ReadFile(path)
+	body, err := os.ReadFile(saveFilePath(symbol))
 
 	if err != nil {
 		return err
 	}
 
-	var ng *Game
+	var og *Game
 
-	if err := json.Unmarshal(body, ng); err != nil {
+	if err := json.Unmarshal(body, og); err != nil {
 		return err
 	}
 
-	g.loadFromOther(ng)
+	g.loadFromOther(og)
 	return nil
 }
 
-func (g *Game) AddContracts(contracts []sdk.Contract) {
-	for i := range contracts {
-		g.Contracts[contracts[i].Id] = &contracts[i]
-	}
-}
-
-func (g *Game) AddCooldown(cd sdk.Cooldown) {
-	g.Ships[cd.ShipSymbol].Cooldown = ext.NewCooldown(cd)
-}
-
-func (g *Game) AddSurveys(surveys []sdk.Survey) {
-	for i := range surveys {
-		g.Surveys[surveys[i].Signature] = &surveys[i]
-	}
-}
-
-func (g *Game) AuthContext() context.Context {
-	return context.WithValue(context.Background(), sdk.ContextAccessToken, g.Token)
-}
-
-func (g *Game) ReplaceContracts(contracts []sdk.Contract) {
-	result := make(map[string]*sdk.Contract)
-	for i := range contracts {
-		result[contracts[i].Id] = &contracts[i]
+func (g *Game) Save() error {
+	if err := g.saveGame(); err != nil {
+		return err
 	}
 
-	g.Contracts = result
-}
-
-func (g *Game) ReplaceShips(ships []sdk.Ship) {
-	result := make(map[string]*ext.Ship)
-	for i := range ships {
-		if v, ok := g.Ships[ships[i].Symbol]; ok {
-			result[ships[i].Symbol] = ext.NewShip(ships[i], v.Cooldown, v.Waypoint)
-		} else {
-			result[ships[i].Symbol] = ext.NewShip(ships[i], nil, nil)
-		}
+	if err := g.saveWaypoints(); err != nil {
+		return err
 	}
 
-	g.Ships = result
-	g.initShips()
+	return g.saveMarkets()
 }
 
-func (g *Game) ShipSymbol(input string) string {
-	return fmt.Sprintf("%s-%s", g.Agent.Symbol, input)
-}
+func (g *Game) saveGame() error {
+	path := saveFilePath(g.Agent.Symbol)
 
-func (g *Game) loadFromOther(ng *Game) {
-	g.Agent = ng.Agent
-	g.Contracts = ng.Contracts
-	g.Ships = ng.Ships
-	g.Surveys = ng.Surveys
-	g.Token = ng.Token
-
-	g.initCaches()
-}
-
-func (g *Game) initCaches() {
-	g.Waypoints = api.NewWaypointCache(g.Client, g.AuthContext())
-	g.Markets = api.NewMarketCache(g.Client, g.AuthContext(), g.Waypoints)
-}
-
-func (g *Game) initShips() {
-	for k, v := range g.Ships {
-		wp, err := g.Waypoints.Waypoint(v.Nav.WaypointSymbol)
-
-		if err != nil {
-			continue
-		}
-
-		g.Ships[k].Waypoint = &wp
+	if path == "" {
+		return fmt.Errorf("failed to get user home directory")
 	}
+
+	return writeToPath(g, path)
 }
 
-func (g *Game) writeToPath(path string) error {
+func (g *Game) saveWaypoints() error {
+	path := waypointCachePath()
+
+	if path == "" {
+		return fmt.Errorf("failed to get user home directory")
+	}
+
+	return writeToPath(g.Waypoints, path)
+}
+
+func (g *Game) saveMarkets() error {
+	path := marketCachePath()
+
+	if path == "" {
+		return fmt.Errorf("failed to get user home directory")
+	}
+
+	return writeToPath(g.Markets, path)
+}
+
+func writeToPath(a any, path string) error {
 	file, err := os.Create(path)
 
 	if err != nil {
@@ -161,8 +106,7 @@ func (g *Game) writeToPath(path string) error {
 	}
 
 	defer file.Close()
-
-	body, err := json.Marshal(g)
+	body, err := json.Marshal(a)
 
 	if err != nil {
 		return err
@@ -177,12 +121,98 @@ func (g *Game) writeToPath(path string) error {
 	return file.Sync()
 }
 
-func saveFilePath(symbol string) string {
-	cfg, err := os.UserConfigDir()
+func saveFilePath(agent string) string {
+	home, err := os.UserHomeDir()
 
 	if err != nil {
 		return ""
 	}
 
-	return fmt.Sprintf("%s/spacetraders/saves/%s.json", cfg, symbol)
+	return fmt.Sprintf("%s/.spacetraders/saves/%s.json", home, agent)
+}
+
+func marketCachePath() string {
+	home, err := os.UserHomeDir()
+
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%s/.spacetraders/cache/markets.json", home)
+}
+
+func waypointCachePath() string {
+	home, err := os.UserHomeDir()
+
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%s/.spacetraders/cache/waypoints.json", home)
+}
+
+func (g *Game) initShips() {
+	for k, v := range g.Ships {
+		wp, err := g.Waypoints.Waypoint(v.Nav.WaypointSymbol)
+
+		if err != nil {
+			continue
+		}
+
+		g.Ships[k].Waypoint = wp
+	}
+}
+
+func (g *Game) loadFromOther(og *Game) {
+	g.Token = og.Token
+	g.Agent = og.Agent
+	g.Contracts = og.Contracts
+	g.Ships = og.Ships
+	g.Surveys = og.Surveys
+
+	api.GetClient().SetToken(g.Token)
+
+	g.loadCaches()
+}
+
+func (g *Game) loadCaches() error {
+	if err := g.loadWaypointCache(); err != nil {
+		return err
+	}
+
+	return g.loadMarketCache()
+}
+
+func (g *Game) loadWaypointCache() error {
+	path := waypointCachePath()
+	body, err := os.ReadFile(path)
+
+	if errors.Is(err, os.ErrNotExist) {
+		body = []byte("{}")
+	} else if err != nil {
+		return err
+	}
+
+	var cache *ext.WaypointCache
+	if err := json.Unmarshal(body, cache); err != nil {
+		return err
+	}
+
+	g.Waypoints = cache
+	return nil
+}
+
+func (g *Game) loadMarketCache() error {
+	path := marketCachePath()
+	body, err := os.ReadFile(path)
+
+	if errors.Is(err, os.ErrNotExist) {
+		body = []byte("{}")
+	} else if err != nil {
+		return err
+	}
+
+	cache := ext.LoadMarketCache(body, g.Waypoints)
+	g.Markets = cache
+	return nil
 }
