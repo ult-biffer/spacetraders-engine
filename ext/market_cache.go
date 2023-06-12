@@ -47,27 +47,32 @@ func newMarketCacheEntry(mkt *models.Market) marketCacheEntry {
 }
 
 func (c *MarketCache) MarketForSymbol(waypoint string) (*models.Market, error) {
-	if mkt, ok := c.Markets[waypoint]; ok && !mkt.IsOld() {
-		return &mkt.Market, nil
-	}
-
 	wp, err := c.waypoints.Waypoint(waypoint)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if !wp.HasMarket() {
-		return nil, fmt.Errorf("waypoint %s has no market", waypoint)
+	return c.MarketForWaypoint(wp)
+}
+
+func (c *MarketCache) MarketForWaypoint(waypoint *Waypoint) (*models.Market, error) {
+	if mkt, ok := c.Markets[waypoint.Symbol]; ok && !mkt.IsOld() {
+		return &mkt.Market, nil
 	}
 
-	mkt, err := api.GetMarket(waypoint)
+	if !waypoint.HasMarket() {
+		return nil, fmt.Errorf("waypoint %s has no market", waypoint.Symbol)
+	}
+
+	wp := waypoint.Symbol
+	mkt, err := api.GetMarket(wp)
 
 	if err != nil {
 		return nil, err
 	}
 
-	c.Markets[waypoint] = newMarketCacheEntry(mkt)
+	c.Markets[wp] = newMarketCacheEntry(mkt)
 	return mkt, nil
 }
 

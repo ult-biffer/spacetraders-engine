@@ -68,9 +68,10 @@ func (g *Game) Save() error {
 	return g.saveMarkets()
 }
 
-func (g *Game) AddCooldown(cooldown models.Cooldown) {
+func (g *Game) AddCooldown(cooldown models.Cooldown) *ext.Cooldown {
 	cd := ext.NewCooldown(cooldown)
 	g.Ships[cd.ShipSymbol].Cooldown = cd
+	return cd
 }
 
 func (g *Game) AddSurveys(surveys []models.Survey) {
